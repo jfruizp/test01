@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="9f4bd68e-72c5-4e71-8d31-b799457bd9df" />
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f0eea513-b6cf-46c6-9014-0c1c7c2892fe" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="cea74659-62d1-4bc1-b525-53c500ec55a1" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="83fbc40b-0cc5-4de7-8e48-60bd67f73614" responseTimeout="60000" >
+		<http:request-connection protocol="HTTPS" host="httpstat.us" />
+	</http:request-config>
+	<flow name="test-fileFlow" doc:id="caec1a10-74f6-48c1-adf3-969159f011f4" >
+		<http:listener doc:name="Listener" doc:id="1ff0a0f3-a234-48a2-94d1-957dc253d617" config-ref="HTTP_Listener_config" path="/order"/>
+		<set-payload value="payload" doc:name="Set Payload" doc:id="48b59240-5266-4661-8ced-814f9dd491f2" />
+		<set-variable value="uno" doc:name="Set Variable" doc:id="a04af34c-ed2e-46da-bc5c-761bb2afd80d" variableName="kk"/>
+		<ee:transform doc:name="Transform Message" doc:id="779b59a1-88cc-43e4-a2fa-24add5c22145" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	kk:"HTTP_Request_configuration1"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="GET" doc:name="Request" doc:id="6b3803e3-a569-4bae-a80c-b4f69bdeaf95" config-ref="${miconfigref}" path="/kk"/>
+		<flow-ref doc:name="child" doc:id="84da2f91-4099-4047-b547-2854c1891c29" name="child"/>
+	</flow>
+	<flow name="test-fileFlow1" doc:id="441cefe9-e57a-4c21-98e5-dc13c34aa237" >
+		<http:listener doc:name="Listener" doc:id="031cc49e-7452-4d79-a349-de658ab7d477" config-ref="HTTP_Listener_config" path="/k"/>
+		<logger level="INFO" doc:name="Logger" doc:id="b5eda3ed-dd4d-45ab-880a-e6522a4f5e63" message='#["Incicio: " ++ now().seconds as String]'/>
+		<try doc:name="Try" doc:id="ce23de91-a357-470a-9676-90e06f200e5b" >
+			<http:request method="GET" doc:name="Request" doc:id="8cbabfdb-8a47-4c58-88a5-ed8fbd0ecc77" config-ref="HTTP_Request_configuration1" path="/200">
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	sleep : attributes.queryParams.maxt
+}]]]></http:query-params>
+			</http:request>
+			<logger level="INFO" doc:name="Logger" doc:id="71fd27eb-ce35-4540-b234-ed0a93c07671" message='#["Fin: " ++ now().seconds as String]'/>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="36b657b2-66cb-4ab2-9149-df132279787e" >
+					<logger level="INFO" doc:name="Logger" doc:id="60a667a8-1924-42eb-b6ac-a8981745279b" message='#["Fin: " ++ now().seconds as String]'/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</flow>
+	<flow name="child" doc:id="955119c6-2ce2-48eb-90c8-9440b9223d27" >
+		<logger level="INFO" doc:name="Logger" doc:id="e835e04f-bd28-44d8-8184-f6b000efd18e" />
+	</flow>
+	<flow name="kk" doc:id="080ba4e5-b208-4d99-a385-39818091b695" >
+		<http:listener doc:name="Listener" doc:id="e5fd06a1-6108-4320-9b52-10a899eda604" config-ref="HTTP_Listener_config" path="/kk"/>
+		<logger level="INFO" doc:name="Logger" doc:id="948d0d7e-1a1c-4ce4-bfd2-e35ffb2a5fe8" message="#[payload]"/>
+		<set-payload value="#[0 to 10]" doc:name="Set Payload" doc:id="8a02efca-4fe3-46d1-b05a-bc67c3c4efff" />
+		<batch:job jobName="test-fileBatch_Job" doc:id="dcd592b6-ba4c-4bbc-bdc5-d70599894fd9">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="d355083e-8a35-41a9-bb03-6bd56d95eaac" >
+					<logger level="INFO" doc:name="Logger" doc:id="4e38cd7c-ed4d-4a9b-92f0-ff6172f19400" message="#[payload]" />
+					<ee:transform doc:name="Transform Message" doc:id="8176e47c-3ae2-473c-8553-f11beb86d742" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	data: payload
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="7990088c-942b-465f-ba88-8faa598863df" message="#[payload]" />
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="d87320de-7393-44d3-9bdb-b9134169bd83" preserveMimeTypes="true" size="2">
+						<logger level="INFO" doc:name="Logger" doc:id="a94e17ab-6869-4601-bf41-cac7cf9f0254" message="#[output application/json&#10;---&#10;payload]"/>
+						<http:request method="POST" doc:name="Request" doc:id="b26a49c3-c08e-49c3-90d3-bb2da6ca5e85" url="http://demo1747903.mockable.io/0test0">
+							<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Content-Type": "application/json"
+}]]]></http:headers>
+						</http:request>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="578cfaef-0055-4f25-bf19-495060e32707" message="#[output application/json&#10;---&#10;payload]" />
+				<logger level="INFO" doc:name="Logger - vars salida" doc:id="3a8ad75d-a523-4dd1-b7e5-5be0000a73b0" message="#[vars.salida]"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
